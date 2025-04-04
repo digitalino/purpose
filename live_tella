@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>🔴 Tella Live Room</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://cdn.agora.io/sdk/release/AgoraRTC_N.js"></script>
+</head>
+<body>
+  <h2>Agora 1:1 Live Voice Chat</h2>
+  <button id="goLive">📡 나 라이브 시작</button>
+  <button id="stopLive">🛑 라이브 종료</button>
+  <button id="joinLive" style="display:none;">🔊 라이브 채팅 참여</button>
+
+  <script>
+    // 1. Firebase 설정
+    var firebaseConfig = {
+      apiKey: "AIzaSyDjG3SPJFkc9fI4O9HajkcEZiojl-5707Q",
+      authDomain: "p1pus-92806.firebaseapp.com",
+      databaseURL: "https://p1pus-92806-default-rtdb.firebaseio.com",
+      projectId: "p1pus-92806",
+    };
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.database();
+
+    // 2. Agora 설정
+    const APP_ID = "cd2936823f4b4a73996b60c850e8eb98";
+    const CHANNEL = "live-room";
+    let client, localStream;
+
+    // 3. 라이브 시작 버튼
+    document.getElementById("goLive").onclick = () => {
+      db.ref("tella_chat").set({
+        isLive: true,
+        updated: new Date().toISOString()
+      });
+      joinAgora();
+    };
+
+    // 4. 라이브 종료 버튼
+    document.getElementById("stopLive").onclick = () => {
+      db.ref("tella_chat").set({ isLive: false });
+      if (client && localStream) {
+        client.unpublish(localStream);
+        localStream.close();
+        client.leave();
+      }
+    };
+
+    // 5. 라이브 상태 감지해서 버튼 보여주기
+    db.ref("tella_chat").on("value", (snap) => {
+      const data = snap.val();
+      const isLive = data && data.isLive;
+      document.getElementById("joinLive").style.display = isLive ? "inline-block" : "none";
+    });
+
+    // 6. 참가자 조인
+    document.getElementById("joinLive").onclick = () => joinAgora();
+
+    function joinAgora() {
+      client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+      client.init(APP_ID, () => {
+        client.join(null, CHANNEL, null, (uid) => {
+          localStream = AgoraRTC.createStream({ audio: true, video: false });
+          localStream.init(() => {
+            client.publish(localStream);
+          });
+        });
+      });
+    }
+  </script>
+</body>
+</html>
