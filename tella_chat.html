@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Agora 1:1 Voice Chat</title>
+  <script src="https://cdn.agora.io/sdk/release/AgoraRTC_N.js"></script>
+</head>
+<body>
+  <h2>Agora 1:1 Voice Chat</h2>
+  <div>
+    <button id="join">🔊 Join Channel</button>
+    <button id="leave">❌ Leave Channel</button>
+  </div>
+
+  <script>
+    const APP_ID = "YOUR_APP_ID"; // <-- 여기에 App ID 입력
+    const CHANNEL = "tella-room"; // 고정된 1:1 채팅방
+    const TOKEN = null;           // 테스트용이라면 null 가능
+    const UID = null;
+
+    let client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+    let localStream;
+
+    document.getElementById("join").onclick = async () => {
+      client.init(APP_ID, () => {
+        console.log("AgoraRTC client initialized");
+
+        client.join(TOKEN, CHANNEL, UID, (uid) => {
+          console.log("User " + uid + " join channel successfully");
+
+          localStream = AgoraRTC.createStream({
+            streamID: uid,
+            audio: true,
+            video: false,
+            screen: false
+          });
+
+          localStream.init(() => {
+            console.log("Local stream initialized");
+            localStream.play("local_stream");
+            client.publish(localStream, (err) => console.error("Publish error:", err));
+          });
+        });
+      });
+    };
+
+    document.getElementById("leave").onclick = () => {
+      client.unpublish(localStream);
+      localStream.close();
+      client.leave(() => {
+        console.log("Left the channel");
+      });
+    };
+
+    // 수신 스트림 처리
+    client.on("stream-added", (evt) => {
+      let stream = evt.stream;
+      client.subscribe(stream, (err) => console.error("Subscribe error:", err));
+    });
+
+    client.on("stream-subscribed", (evt) => {
+      let stream = evt.stream;
+      stream.play("remote_stream");
+    });
+  </script>
+
+  <div id="local_stream"></div>
+  <div id="remote_stream"></div>
+</body>
+</html>
